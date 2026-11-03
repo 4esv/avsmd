@@ -17,10 +17,14 @@ jobs:
 
   build:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-latest }
+          - { target: x86_64-apple-darwin, os: macos-latest }
+          - { target: aarch64-apple-darwin, os: macos-latest }
     env:
       TARBALL: avsmd-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
     steps:
@@ -28,23 +32,44 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - uses: taiki-e/install-action@v2
+      - if: runner.os == 'Linux'
+        uses: taiki-e/install-action@v2
         with:
           tool: cross
-      - run: cross build --release --locked --target ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: cross build --release --locked --target ${{ matrix.target }}
+      # macos-latest is Apple silicon; Apple's toolchain builds x86_64 from it.
+      - if: runner.os == 'macOS'
+        run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Check both binaries are static
+        if: runner.os == 'Linux'
         run: |
           for bin in avsmd avsm; do
             file target/${{ matrix.target }}/release/$bin | grep -E 'statically linked|static-pie linked'
+          done
+      - name: Check both binaries are for the target and link only the system
+        if: runner.os == 'macOS'
+        run: |
+          case ${{ matrix.target }} in aarch64-*) arch=arm64 ;; *) arch=x86_64 ;; esac
+          for bin in avsmd avsm; do
+            f=target/${{ matrix.target }}/release/$bin
+            lipo -archs "$f" | grep -qx "$arch"
+            if otool -L "$f" | tail -n +2 | grep -v -e '^\s*/usr/lib/' -e '^\s*/System/'; then
+              echo "$bin links outside the system"; exit 1
+            fi
           done
       - name: Package the daemon, the client and the service files
         run: |
           cp -R contrib target/${{ matrix.target }}/release/contrib
           tar -C target/${{ matrix.target }}/release -czf "$TARBALL" avsmd avsm contrib
+          shasum -a 256 "$TARBALL" > "$TARBALL.sha256"
+          cat "$TARBALL.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.TARBALL }}
-          path: ${{ env.TARBALL }}
+          path: |
+            ${{ env.TARBALL }}
+            ${{ env.TARBALL }}.sha256
           if-no-files-found: error
 
   release:
@@ -61,7 +86,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
-          files: dist/*.tar.gz
+          files: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
           fail_on_unmatched_files: true
 
   publish:

@@ -61,8 +61,8 @@ adapters only.
 
 Bump `version` in Cargo.toml, update CHANGELOG.md, commit to main, then
 `git tag vX.Y.Z && git push origin vX.Y.Z`. The workflow tests, builds static
-Linux binaries for x86_64 and aarch64, attaches them to the GitHub release, and
-publishes to crates.io when the `CARGO_REGISTRY_TOKEN` secret is set.
+Linux binaries and macOS binaries for x86_64 and aarch64, attaches each tarball
+and its `.sha256` to the GitHub release, and publishes to crates.io when the `CARGO_REGISTRY_TOKEN` secret is set.
 
 ## Markdown
 

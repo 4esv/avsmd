@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1 - 2026-11-03
+
+- Releases: macOS binaries for x86_64 and aarch64 (`x86_64-apple-darwin`, `aarch64-apple-darwin`) beside the static Linux ones, and a `.sha256` file for every tarball.
+
 ## 2.0.0 - 2026-10-24
 
 - States: seven states computed from records only (running, asking, saturated, ineffective, guarded, implausible, paused), with a master caution line at the top of status naming which ventures need a human; a row shows the venture's metric and a cap that still binds whatever the state, a self pause shows as its own, paused ventures are listed apart with the alarm that no lever runs, implausible names the reading that holds it and clears once that metric is trusted again, and an ineffective venture with nothing to answer says re-adopting restores it and that approving runs the lever.
